@@ -50,6 +50,7 @@ export default function ConfirmPage(){
     return ()=>{ if(evtRef.current) evtRef.current.close(); };
   },[]);
 
+  // нічого тут не чіпаємо фокус, лише на step 6
   useEffect(()=>{
     function onVis(){ if(document.visibilityState!=='visible'){ setPaused(true); setShowPauseNote(true);} }
     document.addEventListener('visibilitychange', onVis);
@@ -88,7 +89,8 @@ export default function ConfirmPage(){
       width:820, maxWidth:'92vw',
       background:'rgba(17,24,39,0.86)', border:'1px solid #1f2937',
       borderRadius:16, padding:18, color:'#e5e7eb',
-      boxShadow:'0 16px 40px rgba(0,0,0,.45)'
+      boxShadow:'0 16px 40px rgba(0,0,0,.45)',
+      position:'relative', zIndex:1
     }}>{children}</div>
   );
   const Helper = ({children}:{children:React.ReactNode}) => (
@@ -97,24 +99,29 @@ export default function ConfirmPage(){
 
   return (
     <div style={{
-      minHeight:'100vh',
-      display:'grid',
-      gridTemplateRows:'auto 1fr auto',
-      gap:16,
-      backgroundImage:'url(/images/Background_1.webp)',
-      backgroundSize:'cover',
-      backgroundPosition:'center'
+      minHeight:'100vh', position:'relative',
+      display:'grid', gridTemplateRows:'auto 1fr',
+      backgroundImage:'url(/images/Background_1.webp)', backgroundSize:'cover', backgroundPosition:'center'
     }}>
       <UserTopBar />
 
-      <div style={{display:'grid', placeItems:'center', padding:'28px 12px'}}>
+      {/* ЛОГО ПОЗАДУ КАРТИ */}
+      <div style={{
+        position:'absolute', inset:0, display:'grid', placeItems:'center',
+        pointerEvents:'none', zIndex:0, opacity:.9
+      }}>
+        <Image src="/images/Logo_3.webp" alt="logo" width={600} height={600}
+               style={{width:'min(86vw,600px)', height:'auto'}} priority/>
+      </div>
+
+      <div style={{display:'grid', placeItems:'center', padding:'28px 12px', position:'relative', zIndex:1}}>
         <Card>
           <div style={{fontSize:20, fontWeight:800, marginBottom:12, textAlign:'center'}}>Confirm details</div>
 
           {step===1 && (
             <div style={{display:'grid', gap:10}}>
               <label>The name of the website where you communicated and conducted transactions</label>
-              <select className="input" value={site} onChange={e=>setSite(e.target.value)}
+              <select value={site} onChange={e=>setSite(e.currentTarget.value)}
                 style={{background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}}>
                 <option value="">Select...</option>
                 {OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
@@ -133,21 +140,28 @@ export default function ConfirmPage(){
             <div style={{display:'grid', gap:12}}>
               <div>
                 <label>Your name on the website</label>
-                <input className="input" value={nameOnSite} onChange={e=>setName(e.target.value)} placeholder="John"
-                       style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937',
-                               color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
+                <input
+                  value={nameOnSite}
+                  onChange={e=>setName(e.currentTarget.value)}
+                  placeholder="John"
+                  autoFocus
+                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
               </div>
               <div>
                 <label>Your ID on the website</label>
-                <input className="input" value={idOnSite} onChange={e=>setId(e.target.value)} placeholder="ID12345"
-                       style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937',
-                               color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
+                <input
+                  value={idOnSite}
+                  onChange={e=>setId(e.currentTarget.value)}
+                  placeholder="ID12345"
+                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
               </div>
               <div>
                 <label>Place of residence indicated on the website</label>
-                <input className="input" value={residence} onChange={e=>setRes(e.target.value)} placeholder="City, Country"
-                       style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937',
-                               color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
+                <input
+                  value={residence}
+                  onChange={e=>setRes(e.currentTarget.value)}
+                  placeholder="City, Country"
+                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
               </div>
 
               <Helper>The panda rabbit crocodile, di di di, eats candy...</Helper>
@@ -193,10 +207,11 @@ export default function ConfirmPage(){
           {step===4 && (
             <div style={{display:'grid', gap:8}}>
               <label>How many cubes did you use?</label>
-              <input className="input" type="number" value={cubes}
-                     onChange={e=>setCubes(e.target.value===''? '': parseInt(e.target.value||'0'))}
-                     style={{background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb',
-                             borderRadius:10, padding:'12px'}} />
+              <input
+                type="number"
+                value={cubes}
+                onChange={e=>setCubes(e.currentTarget.value===''? '': parseInt(e.currentTarget.value||'0'))}
+                style={{background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
               <div style={{fontSize:12, color:'#94a3b8'}}>*please indicate the approximate quantity</div>
               <div><button className="btn" onClick={()=>setStep(5)} style={{border:'1px solid #22c55e', color:'#22c55e', borderRadius:10, padding:'10px'}}>Next</button></div>
             </div>
@@ -205,9 +220,11 @@ export default function ConfirmPage(){
           {step===5 && (
             <div style={{display:'grid', gap:8}}>
               <label>Enter the first four digits of the method and the last digits of the destination in the format ****-****</label>
-              <input className="input" placeholder="1234-1234" value={method} onChange={e=>setMethod(e.target.value)}
-                     style={{background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb',
-                             borderRadius:10, padding:'12px'}} />
+              <input
+                placeholder="1234-1234"
+                value={method}
+                onChange={e=>setMethod(e.currentTarget.value)}
+                style={{background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'12px'}} />
               <div><button className="btn" disabled={!/^\d{4}-\d{4}$/.test(method)} onClick={()=>setStep(6)}
                            style={{border:'1px solid #22c55e', color:'#22c55e', borderRadius:10, padding:'10px'}}>Next</button></div>
             </div>
@@ -236,17 +253,6 @@ export default function ConfirmPage(){
             </div>
           )}
         </Card>
-      </div>
-
-      <div style={{display:'grid', placeItems:'center', paddingBottom:14}}>
-        <Image
-          src="/images/Logo_3.webp"
-          alt="logo"
-          width={520}
-          height={520}
-          style={{ width:'min(82vw,520px)', height:'auto' }}
-          priority
-        />
       </div>
     </div>
   );
