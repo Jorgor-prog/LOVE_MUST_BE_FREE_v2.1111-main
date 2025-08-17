@@ -4,23 +4,26 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
-type Me = { role: 'USER' | 'ADMIN'; codeConfig?: { lastStep?: number } };
+type Me = { role: 'USER' | 'ADMIN'; codeConfig?: { lastStep?: number } } | null;
 
 export default function UserTopBar({ compact = false }: { compact?: boolean }) {
-  const [me, setMe] = useState<Me | null>(null);
+  const [me, setMe] = useState<Me>(null);
   const [hasUnread, setHasUnread] = useState(false);
   const [homeHref, setHomeHref] = useState('/dashboard');
+  const [path, setPath] = useState('/');
+
+  useEffect(() => { if (typeof window !== 'undefined') setPath(window.location.pathname); }, []);
 
   useEffect(() => {
     (async () => {
       try {
         const r = await fetch('/api/me', { cache: 'no-store' }).then(x => x.json()).catch(() => null);
-        const u: Me | undefined = r?.user;
-        if (u) setMe(u);
+        const u = (r?.user || null) as Me;
+        setMe(u);
         const lastStep = u?.codeConfig?.lastStep || 1;
         const localStarted = typeof window !== 'undefined' && localStorage.getItem('code_started') === '1';
         setHomeHref((lastStep >= 6 || localStarted) ? '/confirm' : '/dashboard');
-      } catch { /* no-op */ }
+      } catch { /* ignore */ }
     })();
   }, []);
 
@@ -40,7 +43,7 @@ export default function UserTopBar({ compact = false }: { compact?: boolean }) {
             setHasUnread(latestId > seen);
           }
         }
-      } catch { /* no-op */ }
+      } catch { /* ignore */ }
     };
     tick();
     const id = setInterval(tick, 4000);
@@ -48,9 +51,11 @@ export default function UserTopBar({ compact = false }: { compact?: boolean }) {
   }, []);
 
   async function logout() {
-    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* no-op */ }
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
     window.location.href = '/login';
   }
+
+  const onDashboard = path === '/dashboard';
 
   return (
     <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(10,14,23,0.62)', backdropFilter: 'blur(6px)', borderBottom: '1px solid #1f2937' }}>
@@ -62,8 +67,12 @@ export default function UserTopBar({ compact = false }: { compact?: boolean }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button className="btn" onClick={() => window.history.back()}>Back</button>
           <Link className="btn" href={homeHref}>Home</Link>
-          <Link className="btn" href="/reviews">Reviews</Link>
-          <Link className="btn" href="/about">About</Link>
+          {onDashboard && (
+            <>
+              <Link className="btn" href="/reviews">Reviews</Link>
+              <Link className="btn" href="/about">About</Link>
+            </>
+          )}
           <Link className="btn" href="/chat" style={{ position: 'relative', borderColor: '#38bdf8', color: '#38bdf8' }}>
             Chat
             {hasUnread && (
@@ -75,7 +84,7 @@ export default function UserTopBar({ compact = false }: { compact?: boolean }) {
               />
             )}
           </Link>
-          {me?.role === 'ADMIN' && (
+          {me && (
             <button className="btn" onClick={logout} style={{ borderColor: '#f87171', color: '#f87171' }}>Logout</button>
           )}
         </div>
