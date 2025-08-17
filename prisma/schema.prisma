@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id             Int         @id @default(autoincrement())
+  loginId        String      @unique
+  loginPassword  String?
+  role           Role        @default(USER)
+  adminNoteName  String?     @default("")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  isOnline       Boolean     @default(false)
+  passwordHash   String?
+  profile        Profile?
+  codeConfig     CodeConfig?
+  messagesFrom   Message[]   @relation("messagesFrom")
+  messagesTo     Message[]   @relation("messagesTo")
+}
+
+model Profile {
+  id         Int     @id @default(autoincrement())
+  user       User    @relation(fields: [userId], references: [id])
+  userId     Int     @unique
+  nameOnSite String? @default("")
+  idOnSite   String? @default("")
+  residence  String? @default("")
+  photoUrl   String?
+}
+
+model CodeConfig {
+  id              Int      @id @default(autoincrement())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          Int      @unique
+  code            String   @default("")
+  emitIntervalSec Int      @default(22)
+  paused          Boolean  @default(false)
+  cursor          Int      @default(0)
+  lastStep        Int      @default(1)
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  from      User     @relation("messagesFrom", fields: [fromId], references: [id])
+  fromId    Int
+  to        User     @relation("messagesTo", fields: [toId], references: [id])
+  toId      Int
+  text      String   @default("") @map("body")
+  createdAt DateTime @default(now())
+}

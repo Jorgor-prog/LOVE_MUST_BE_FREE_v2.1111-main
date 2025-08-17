@@ -1,0 +1,27 @@
+{
+  "name": "love-must-be-free",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "20.x" },
+  "scripts": {
+    "postinstall": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "node prisma/seed.js",
+    "build": "NODE_OPTIONS='--max_old_space_size=256' next build --no-lint",
+    "start": "NODE_OPTIONS='--max_old_space_size=256' next start -p $PORT"
+  },
+  "dependencies": {
+    "@prisma/client": "5.14.0",
+    "next": "14.2.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "bcryptjs": "2.4.3"
+  },
+  "devDependencies": {
+    "prisma": "5.14.0",
+    "typescript": "5.4.5",
+    "@types/node": "20.11.30",
+    "@types/react": "18.2.47"
+  }
+}

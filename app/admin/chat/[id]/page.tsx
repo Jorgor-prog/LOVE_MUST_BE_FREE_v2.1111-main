@@ -1,0 +1,81 @@
+'use client';
+export const dynamic = 'force-dynamic';
+
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams } from 'next/navigation';
+
+type Msg = { id:number; fromId:number; toId:number; text:string; createdAt:string };
+type Me  = { id:number, role:'ADMIN'|'USER' };
+
+export default function AdminChatPage(){
+  const params = useParams<{id:string}>();
+  const peerId = Number(params.id);
+  const [me, setMe] = useState<Me|null>(null);
+  const [list, setList] = useState<Msg[]>([]);
+  const [text, setText] = useState('');
+  const boxRef = useRef<HTMLDivElement|null>(null);
+  const lastIdRef = useRef<number>(0);
+
+  useEffect(()=>{
+    (async()=>{
+      const r = await fetch('/api/me', { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
+      const u = r?.user;
+      if(!u){ window.location.href = '/login'; return; }
+      if(u.role !== 'ADMIN'){ window.location.href = '/dashboard'; return; }
+      setMe({ id:u.id, role:'ADMIN' });
+    })();
+  },[]);
+
+  function scrollBottom(){ if(boxRef.current){ boxRef.current.scrollTop = boxRef.current.scrollHeight + 1000; } }
+
+  async function load(){
+    const j = await fetch(`/api/chat/thread?peerId=${peerId}`, { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
+    const msgs: Msg[] = j?.messages || [];
+    setList(msgs);
+    lastIdRef.current = msgs.length ? msgs[msgs.length-1].id : 0;
+    setTimeout(scrollBottom, 0);
+  }
+
+  useEffect(()=>{ (async()=>{ await load(); })(); },[]);
+  useEffect(()=>{ const id = setInterval(load, 3500); return ()=>clearInterval(id); },[]);
+
+  async function send(){
+    if(!peerId || !text.trim()) return;
+    await fetch('/api/chat/send', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ toId: peerId, text: text.trim() })
+    }).catch(()=>{});
+    setText('');
+    await load();
+  }
+
+  return (
+    <div style={{minHeight:'100vh', background:'linear-gradient(180deg,#0b1220,#0f172a)', color:'#e5e7eb'}}>
+      <div style={{maxWidth:900, margin:'20px auto', background:'rgba(17,24,39,0.8)', border:'1px solid #1f2937',
+                   borderRadius:12, padding:12}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+          <div style={{fontWeight:700}}>Admin chat with user #{peerId}</div>
+          <button className="btn" onClick={()=>window.history.back()} style={{borderColor:'#38bdf8', color:'#38bdf8'}}>Back</button>
+        </div>
+
+        <div ref={boxRef} style={{maxHeight:420, overflow:'auto', padding:8, background:'#0b1220', border:'1px solid #1f2937', borderRadius:8}}>
+          {list.map(m=>(
+            <div key={m.id} style={{display:'flex', justifyContent: m.fromId===me?.id ? 'flex-end':'flex-start', margin:'6px 0'}}>
+              <div style={{maxWidth:'78%', padding:'8px 10px', borderRadius:10,
+                           background: m.fromId===me?.id ? '#0ea5e9' : '#1f2937',
+                           color: m.fromId===me?.id ? '#0b1220' : '#e5e7eb'}}>
+                {m.text}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{display:'flex', gap:8, marginTop:8}}>
+          <input className="input" value={text} onChange={e=>setText(e.target.value)} placeholder="Write a message…"
+                 style={{flex:1, background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}} />
+          <button className="btn" onClick={send} style={{borderColor:'#38bdf8', color:'#38bdf8'}}>Send</button>
+        </div>
+      </div>
+    </div>
+  );
+}
