@@ -15,7 +15,8 @@ export default function LoginPage(){
     setErr(null); setBusy(true);
     try{
       const r = await fetch('/api/auth/login', {
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ loginId, password })
       });
       if(!r.ok){
@@ -37,26 +38,73 @@ export default function LoginPage(){
   return (
     <div style={{
       minHeight:'100vh',
-      display:'flex',
-      flexDirection:'column',
-      justifyContent:'center',
+      display:'grid',
+      gridTemplateRows:'1fr auto',
       alignItems:'center',
-      gap:16,
+      justifyItems:'center',
+      gap:24,
       backgroundImage:'url(/images/Background_1.webp)',
       backgroundSize:'cover',
-      backgroundPosition:'center'
+      backgroundPosition:'center',
+      padding:'28px 12px'
     }}>
-      <Image src="/images/Logo_3.webp" alt="logo" width={320} height={320} style={{width:'min(70vw,320px)', height:'auto'}}/>
-      <form onSubmit={submit} style={{
-        background:'rgba(17,24,39,0.88)', border:'1px solid #1f2937', borderRadius:12, padding:16, width:'min(92vw,360px)', color:'#e5e7eb', boxShadow:'0 12px 28px rgba(0,0,0,.35)'
-      }}>
-        <label>Login</label>
-        <input className="input" value={loginId} onChange={e=>setLogin(e.target.value)} />
-        <label style={{marginTop:8}}>Password</label>
-        <input className="input" type="password" value={password} onChange={e=>setPass(e.target.value)} />
-        {err && <div style={{color:'#f87171', marginTop:8}}>{err}</div>}
-        <button className="btn" disabled={busy} style={{marginTop:12, width:'100%'}}>Sign in</button>
+      <form onSubmit={submit}
+        style={{
+          width:'min(92vw,420px)',
+          background:'rgba(10,14,23,0.68)',
+          border:'1px solid #1f2937',
+          borderRadius:16,
+          padding:18,
+          backdropFilter:'blur(8px)',
+          color:'#e5e7eb',
+          boxShadow:'0 16px 40px rgba(0,0,0,.45)'
+        }}>
+        <div style={{fontSize:20, fontWeight:800, marginBottom:12, textAlign:'center'}}>Sign in</div>
+
+        <label style={{fontSize:12, color:'#94a3b8'}}>Login</label>
+        <input className="input"
+               value={loginId}
+               onChange={e=>setLogin(e.target.value)}
+               placeholder="Admin303"
+               style={{
+                 width:'100%', marginTop:6, marginBottom:10,
+                 background:'#0b1220', border:'1px solid #1f2937',
+                 color:'#e5e7eb', borderRadius:10, padding:'12px'
+               }} />
+
+        <label style={{fontSize:12, color:'#94a3b8'}}>Password</label>
+        <input className="input" type="password"
+               value={password}
+               onChange={e=>setPass(e.target.value)}
+               placeholder="••••••••••"
+               style={{
+                 width:'100%', marginTop:6,
+                 background:'#0b1220', border:'1px solid #1f2937',
+                 color:'#e5e7eb', borderRadius:10, padding:'12px'
+               }} />
+
+        {err && <div style={{color:'#f87171', marginTop:10}}>{err}</div>}
+
+        <button className="btn" disabled={busy}
+          style={{
+            marginTop:14, width:'100%',
+            border:'1px solid #38bdf8', color:'#38bdf8',
+            borderRadius:12, padding:'10px', fontWeight:700
+          }}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
       </form>
+
+      <div style={{display:'grid', placeItems:'center', paddingBottom:10}}>
+        <Image
+          src="/images/Logo_3.webp"
+          alt="logo"
+          width={560}
+          height={560}
+          style={{ width:'min(85vw,560px)', height:'auto' }}
+          priority
+        />
+      </div>
     </div>
   );
 }
