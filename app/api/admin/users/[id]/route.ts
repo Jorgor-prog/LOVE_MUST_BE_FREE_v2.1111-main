@@ -3,13 +3,12 @@ import { prisma } from '@/lib/prisma';
 
 async function resolveMe(req: Request) {
   try {
-    // Динамічно підхоплюємо будь-який наявний хелпер з lib/auth
     const mod: any = await import('@/lib/auth');
     if (typeof mod.getUserFromRequest === 'function') return await mod.getUserFromRequest(req);
     if (typeof mod.getSessionUser === 'function')   return await mod.getSessionUser(req);
     if (typeof mod.getUser === 'function')          return await mod.getUser(req);
-    if (typeof mod.requireAdmin === 'function')     return await mod.requireAdmin(req); // може кидати — перехопимо нижче
-  } catch (_) {}
+    if (typeof mod.requireAdmin === 'function')     return await mod.requireAdmin(req);
+  } catch {}
   return null;
 }
 
@@ -33,7 +32,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     include: { profile: true },
   });
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
   return NextResponse.json({ user });
 }
 
@@ -45,14 +43,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   if (!Number.isFinite(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
 
   const body = await req.json().catch(() => ({} as any));
-  const { loginId, password, role, profile } = body || {};
+  const { loginId, loginPassword, role, profile } = body || {};
 
   try {
     const updated = await prisma.user.update({
       where: { id },
       data: {
         loginId: typeof loginId === 'string' ? loginId : undefined,
-        password: typeof password === 'string' ? password : undefined, // ти просив зберігати «як є»
+        loginPassword: typeof loginPassword === 'string' ? loginPassword : undefined, // plaintext як ти просив
         role: role === 'ADMIN' || role === 'USER' ? role : undefined,
         profile: profile
           ? {
@@ -75,7 +73,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       },
       include: { profile: true },
     });
-
     return NextResponse.json({ user: updated });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Update failed' }, { status: 400 });
