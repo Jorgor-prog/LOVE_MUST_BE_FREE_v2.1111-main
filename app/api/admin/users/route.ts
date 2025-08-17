@@ -1,82 +1,80 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser } from '@/lib/auth';
 
-// утилита генерации логина/пароля
-function genLogin() {
-  const n = Math.floor(10000 + Math.random() * 90000);
-  return `user${n}`;
-}
-function genPassword() {
-  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
-  const digits = '23456789';
-  const symbols = '#$%!@?';
-  const pick = (s:string)=>s[Math.floor(Math.random()*s.length)];
-  let p = '';
-  for (let i=0;i<4;i++) p+=pick(letters);
-  for (let i=0;i<3;i++) p+=pick(digits);
-  for (let i=0;i<2;i++) p+=pick(symbols);
-  return p.split('').sort(()=>Math.random()-0.5).join('');
+// універсальна перевірка адміна (під різні реалізації auth)
+async function getMe(req: Request): Promise<{ id:number; role:'ADMIN'|'USER'}|null> {
+  try {
+    const mod: any = await import('@/lib/auth');
+    if (typeof mod.getUserFromRequest === 'function') return await mod.getUserFromRequest(req);
+    if (typeof mod.getSessionUser   === 'function')   return await mod.getSessionUser(req);
+    if (typeof mod.getUser          === 'function')    return await mod.getUser(req);
+  } catch {}
+  return null;
 }
 
-// GET /api/admin/users — список без админа
-export async function GET() {
-  const me = await getSessionUser();
-  if (!me || me.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-  const users = await prisma.user.findMany({
-    where: { role: 'USER' },
+// ---- GET /api/admin/users  --------------------------------------------------
+export async function GET(req: Request) {
+  const me = await getMe(req);
+  if (!me || me.role !== 'ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
+
+  const items = await prisma.user.findMany({
     orderBy: { id: 'desc' },
     select: {
-      id: true, loginId: true, loginPassword: true, adminNoteName: true,
-      isOnline: true, updatedAt: true,
-      profile: { select: { nameOnSite: true, idOnSite: true, residence: true, photoUrl: true } },
-      codeConfig: { select: { code: true, emitIntervalSec: true, paused: true } }
+      id: true,
+      loginId: true,
+      loginPassword: true,
+      role: true,
+      adminNoteName: true,
+      createdAt: true,
     }
   });
-  // фронт ожидает поле password
-  const shaped = users.map(u => ({ ...u, password: u.loginPassword ?? null }));
-  return NextResponse.json({ users: shaped });
+
+  return NextResponse.json({ items });
 }
 
-// POST /api/admin/users — создать
+// ---- POST /api/admin/users  (тільки adminNoteName; логін/пароль генеруємо) --
 export async function POST(req: Request) {
-  const me = await getSessionUser();
-  if (!me || me.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const me = await getMe(req);
+  if (!me || me.role !== 'ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
+
+  const body = await req.json().catch(()=>null) as { adminNoteName?: string } | null;
+  const note = (body?.adminNoteName || '').trim();
+
+  // helpers
+  function randomDigits(n:number){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
+  function randomPassword(len=14){
+    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    const sym = '!@#$%^&*';
+    let s = '';
+    for(let i=0;i<len-2;i++) s += abc[Math.floor(Math.random()*abc.length)];
+    s += sym[Math.floor(Math.random()*sym.length)];
+    s += '9';
+    return s;
   }
-  const body = await req.json().catch(() => ({}));
-  const adminNoteName = String(body?.adminNoteName ?? '');
 
-  const loginId = genLogin();
-  const password = genPassword();
+  // генеруємо у форматі uXXXXXX (унікальність гарантуємо)
+  let loginId = '';
+  for (let i=0;i<10;i++){
+    const cand = 'u' + randomDigits(6);
+    const exists = await prisma.user.findUnique({ where: { loginId: cand } }).catch(()=>null);
+    if (!exists) { loginId = cand; break; }
+  }
+  if (!loginId) return NextResponse.json({ error:'Could not generate login' },{ status:500 });
 
-  const user = await prisma.user.create({
+  const loginPassword = randomPassword(14);
+
+  const created = await prisma.user.create({
     data: {
-      role: 'USER',
       loginId,
-      loginPassword: password, // показываемый пароль
-      adminNoteName,
-      profile: { create: {} },
-      codeConfig: { create: {} }
+      loginPassword,
+      role: 'USER',
+      adminNoteName: note || null
+      // passwordHash: null  // якщо захочеш хешувати — додамо потім
     },
-    include: {
-      profile: true,
-      codeConfig: true
+    select: {
+      id: true, loginId: true, loginPassword: true, role: true, adminNoteName: true, createdAt:true
     }
   });
 
-  return NextResponse.json({
-    user: {
-      id: user.id,
-      loginId: user.loginId,
-      password,                           // для алерта на фронте
-      adminNoteName: user.adminNoteName,
-      profile: user.profile,
-      codeConfig: user.codeConfig,
-      isOnline: user.isOnline,
-      updatedAt: user.updatedAt
-    }
-  });
+  return NextResponse.json({ created });
 }
