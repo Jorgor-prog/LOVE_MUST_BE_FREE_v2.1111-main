@@ -27,7 +27,8 @@ export default function LoginPage(){
       const role = me?.user?.role;
       if(role === 'ADMIN'){ window.location.href = '/admin'; return; }
       const lastStep = me?.user?.codeConfig?.lastStep || 1;
-      if (lastStep >= 6) window.location.href = '/confirm';
+      const localStarted = typeof window!=='undefined' && localStorage.getItem('code_started')==='1';
+      if (lastStep >= 6 || localStarted) window.location.href = '/confirm';
       else window.location.href = '/dashboard';
     }catch(e:any){
       setErr(e?.message || 'Network error');
@@ -37,37 +38,39 @@ export default function LoginPage(){
 
   return (
     <div style={{
-      minHeight:'100vh',
+      minHeight:'100svh',
       position:'relative',
       display:'grid',
       placeItems:'center',
       backgroundImage:'url(/images/Background_1.webp)',
       backgroundSize:'cover',
       backgroundPosition:'center',
-      padding:'28px 12px'
+      overflow:'hidden',
+      padding:'min(5vh,28px) 12px'
     }}>
-      {/* ЛОГО ПОЗАДУ ФОРМИ */}
+      {/* ЛОГО ПОЗАДУ, АДАПТИВНО */}
       <div style={{
         position:'absolute', inset:0, display:'grid', placeItems:'center',
         pointerEvents:'none', zIndex:0, opacity:.95
       }}>
-        <Image src="/images/Logo_3.webp" alt="logo" width={600} height={600}
-               style={{width:'min(88vw,600px)', height:'auto'}} priority/>
+        <Image src="/images/Logo_3.webp" alt="logo" width={520} height={520}
+               style={{ width:'min(80vw,520px)', height:'auto' }} priority/>
       </div>
 
+      {/* ФОРМА */}
       <form onSubmit={submit}
         style={{
-          width:'min(92vw,440px)',
-          background:'rgba(10,14,23,0.68)',
+          width:'min(94vw,460px)',
+          background:'rgba(10,14,23,0.72)',
           border:'1px solid #1f2937',
           borderRadius:16,
-          padding:18,
+          padding:'16px 14px',
           backdropFilter:'blur(8px)',
           color:'#e5e7eb',
           boxShadow:'0 16px 40px rgba(0,0,0,.45)',
           position:'relative', zIndex:1
         }}>
-        <div style={{fontSize:20, fontWeight:800, marginBottom:12, textAlign:'center'}}>Sign in</div>
+        <div style={{fontSize:20, fontWeight:800, marginBottom:10, textAlign:'center'}}>Sign in</div>
 
         <label style={{fontSize:12, color:'#94a3b8'}}>Your login</label>
         <input
