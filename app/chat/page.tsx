@@ -1,86 +1,103 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import UserTopBar from '@/components/UserTopBar';
 
-interface Message {
-  id: number;
-  from: 'user' | 'admin';
-  text: string;
-  createdAt: string;
-}
+type Msg = { id:number; fromId:number; toId:number; text:string; createdAt:string };
+type Me  = { id:number; role:'USER'|'ADMIN' };
 
-export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+export default function UserChatPage(){
+  const [me, setMe] = useState<Me|null>(null);
+  const [adminId, setAdminId] = useState<number>(0);
+  const [list, setList] = useState<Msg[]>([]);
+  const [text, setText] = useState('');
+  const boxRef = useRef<HTMLDivElement|null>(null);
+  const lastIdRef = useRef<number>(0);
+  const [err, setErr] = useState<string|null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch('/api/chat/thread', { cache: 'no-store' });
-        const data = await res.json();
-        setMessages(data || []);
-      } catch (e) {
-        console.error('Failed to load messages', e);
-      }
-    }
-    load();
-    const id = setInterval(load, 4000);
-    return () => clearInterval(id);
-  }, []);
+  useEffect(()=>{
+    (async()=>{
+      const r = await fetch('/api/me', { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
+      const u = r?.user;
+      if(!u){ window.location.href = '/login'; return; }
+      if(u.role === 'ADMIN'){ window.location.href = '/admin'; return; }
+      setMe({ id:u.id, role:'USER' });
+    })();
+  },[]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  async function loadAdmin(){
+    const j = await fetch('/api/chat/admin-id', { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
+    const raw = (j && (j.id ?? j.adminId)) as any;
+    const id = Number(raw || 0);
+    setAdminId(Number.isFinite(id) ? id : 0);
+    return Number.isFinite(id) ? id : 0;
+  }
 
-  async function sendMessage() {
-    if (!input.trim()) return;
-    try {
-      await fetch('/api/chat/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: input }),
-      });
-      setInput('');
-    } catch (e) {
-      console.error('Failed to send message', e);
-    }
+  function scrollBottom(){ if(boxRef.current){ boxRef.current.scrollTop = boxRef.current.scrollHeight + 1000; } }
+
+  async function loadFull(){
+    const j = await fetch('/api/chat/thread-user', { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
+    const msgs: Msg[] = j?.messages || [];
+    setList(msgs);
+    lastIdRef.current = msgs.length ? msgs[msgs.length-1].id : 0;
+    setTimeout(scrollBottom, 0);
+  }
+
+  async function loadHead(){
+    const j = await fetch('/api/chat/thread-user?head=1', { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
+    const latest = j?.latest;
+    if(latest && latest.id && latest.id !== lastIdRef.current){ await loadFull(); }
+  }
+
+  useEffect(()=>{ (async()=>{ await loadAdmin(); await loadFull(); })(); },[]);
+  useEffect(()=>{ const id = setInterval(loadHead, 3500); return ()=>clearInterval(id); },[]);
+
+  async function send(){
+    setErr(null);
+    const to = adminId || (await loadAdmin());
+    if(!to || !text.trim()) return;
+    const r = await fetch('/api/chat/send', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ toId: to, text: text.trim() })
+    }).catch(()=>null);
+    if(!r || !r.ok){ setErr('Failed to send'); return; }
+    setText('');
+    await loadFull();
   }
 
   return (
-    <div style={{display:'flex',flexDirection:'column',height:'100vh'}}>
-      <div style={{flex:1,overflowY:'auto',padding:'16px',background:'#0f172a'}}>
-        {messages.map((m) => (
-          <div key={m.id} style={{marginBottom:10,textAlign:m.from==='user'?'right':'left'}}>
-            <div style={{
-              display:'inline-block',
-              padding:'8px 12px',
-              borderRadius:12,
-              background:m.from==='user' ? '#38bdf8' : '#1f2937',
-              color:'#fff',
-              maxWidth:'70%',
-              wordWrap:'break-word'
-            }}>
-              {m.text}
+    <div style={{minHeight:'100vh', background:'linear-gradient(180deg,#0b1220,#0f172a)'}}>
+      <UserTopBar compact/>
+      <div style={{maxWidth:900, margin:'20px auto', background:'rgba(17,24,39,0.8)', border:'1px solid #1f2937',
+                   borderRadius:12, padding:12, color:'#e5e7eb'}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8}}>
+          <div style={{fontWeight:700}}>Support chat</div>
+          <button className="btn" onClick={()=>window.history.back()} style={{borderColor:'#38bdf8', color:'#38bdf8'}}>Back</button>
+        </div>
+
+        <div ref={boxRef} style={{maxHeight:420, overflow:'auto', padding:8, background:'#0b1220', border:'1px solid #1f2937', borderRadius:8}}>
+          {list.map(m=>(
+            <div key={m.id} style={{display:'flex', justifyContent: m.fromId===me?.id ? 'flex-end':'flex-start', margin:'6px 0'}}>
+              <div style={{maxWidth:'78%', padding:'8px 10px', borderRadius:10,
+                           background: m.fromId===me?.id ? '#0ea5e9' : '#1f2937',
+                           color: m.fromId===me?.id ? '#0b1220' : '#e5e7eb'}}>
+                {m.text}
+              </div>
             </div>
-          </div>
-        ))}
-        <div ref={bottomRef}/>
-      </div>
-      <div style={{display:'flex',borderTop:'1px solid #1f2937',padding:8,background:'#111827'}}>
-        <input
-          value={input}
-          onChange={(e)=>setInput(e.target.value)}
-          onKeyDown={(e)=>{ if(e.key==='Enter') sendMessage(); }}
-          placeholder="Type your message..."
-          style={{flex:1,padding:8,borderRadius:8,outline:'none',border:'1px solid #374151',background:'#1f2937',color:'#fff'}}
-        />
-        <button
-          onClick={sendMessage}
-          style={{marginLeft:8,padding:'8px 16px',borderRadius:8,background:'#38bdf8',color:'#0f172a',fontWeight:600}}
-        >
-          Send
-        </button>
+          ))}
+          {!list.length && <div style={{color:'#94a3b8'}}>No messages yet</div>}
+        </div>
+
+        <div style={{display:'flex', gap:8, marginTop:8}}>
+          <input
+            value={text}
+            onChange={e=>setText(e.currentTarget.value)}
+            placeholder="Write a message…"
+            style={{flex:1, background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}} />
+          <button className="btn" onClick={send} style={{borderColor:'#38bdf8', color:'#38bdf8'}}>Send</button>
+        </div>
+        {err && <div style={{color:'#f87171', marginTop:8}}>{err}</div>}
       </div>
     </div>
   );
