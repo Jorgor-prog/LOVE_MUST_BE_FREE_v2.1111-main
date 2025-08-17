@@ -1,16 +1,26 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
+const ADMIN_LOGIN_ID = process.env.ADMIN_LOGIN_ID || 'Admin303';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'T7#jZx9!rB2mLq4@';
+
 async function main() {
-  const adminLogin = process.env.ADMIN_LOGIN || "Admin303";
-  const adminPassword = process.env.ADMIN_PASSWORD || "T7#jZx9!rB2mLq4@";
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
+
   await prisma.user.upsert({
-    where: { loginId: adminLogin },
-    update: { role: "ADMIN", passwordHash, loginPassword: null },
-    create: { loginId: adminLogin, role: "ADMIN", passwordHash, loginPassword: null }
+    where: { loginId: ADMIN_LOGIN_ID },
+    update: {
+      password: ADMIN_PASSWORD,
+      role: 'ADMIN',
+    },
+    create: {
+      loginId: ADMIN_LOGIN_ID,
+      password: ADMIN_PASSWORD,
+      role: 'ADMIN',
+    },
   });
-  console.log("Admin ensured:", adminLogin);
+  console.log('[seed] admin ensured:', ADMIN_LOGIN_ID);
 }
-main().catch(e => { console.error(e); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });
+
+main()
+  .then(async () => { await prisma.$disconnect(); })
+  .catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1); });
