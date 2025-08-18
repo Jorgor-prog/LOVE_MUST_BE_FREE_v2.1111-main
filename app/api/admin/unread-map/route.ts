@@ -1,24 +1,30 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser } from '@/lib/auth';
 
-export async function GET(){
-  const me = await getSessionUser();
-  if(!me || me.role !== 'ADMIN') return NextResponse.json({});
+async function getMe(req: Request): Promise<{ id:number; role:'ADMIN'|'USER'}|null> {
+  try {
+    const mod: any = await import('@/lib/auth');
+    if (typeof mod.getUserFromRequest === 'function') return await mod.getUserFromRequest(req);
+    if (typeof mod.getSessionUser   === 'function')   return await mod.getSessionUser(req);
+    if (typeof mod.getUser          === 'function')    return await mod.getUser(req);
+  } catch {}
+  return null;
+}
 
-  const users = await prisma.user.findMany({
-    where: { role: 'USER' },
-    select: { id: true }
+export async function GET(req: Request){
+  const me = await getMe(req);
+  if(!me || me.role!=='ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
+
+  const msgs = await prisma.message.findMany({
+    where:{ toId: me.id },
+    select:{ id:true, fromId:true, createdAt:true },
+    orderBy:{ createdAt:'desc' },
+    take: 500
   });
 
-  const map: Record<number, boolean> = {};
-  for (const u of users){
-    const last = await prisma.message.findFirst({
-      where: { OR: [ { fromId: u.id, toId: me.id }, { fromId: me.id, toId: u.id } ] },
-      orderBy: { id: 'desc' },
-      select: { fromId: true }
-    });
-    map[u.id] = !!last && last.fromId === u.id; // true — последним писал пользователь
-  }
-  return NextResponse.json({ map });
+  const map: Record<number, number> = {};
+  for(const m of msgs){ if(!map[m.fromId]) map[m.fromId] = m.id; }
+  const latest = msgs[0]?.id || 0;
+
+  return NextResponse.json({ map, latest });
 }
