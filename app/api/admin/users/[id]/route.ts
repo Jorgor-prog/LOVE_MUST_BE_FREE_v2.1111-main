@@ -78,12 +78,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if(!who) return NextResponse.json({ error:'Not found' },{ status:404 });
   if(who.role!=='USER') return NextResponse.json({ error:'Cannot delete ADMIN' },{ status:403 });
 
-  await prisma.$transaction([
+  const tx = [
     prisma.message.deleteMany({ where:{ OR:[{fromId:id},{toId:id}] } }),
-    prisma.profile.deleteMany({ where:{ userId:id } }).catch(()=>{}),
-    prisma.codeConfig.deleteMany({ where:{ userId:id } }).catch(()=>{}),
+    prisma.profile.deleteMany({ where:{ userId:id } }),
+    prisma.codeConfig.deleteMany({ where:{ userId:id } }),
     prisma.user.delete({ where:{ id } }),
-  ]);
+  ];
+  await prisma.$transaction(tx as any);
 
   return NextResponse.json({ ok:true });
 }
