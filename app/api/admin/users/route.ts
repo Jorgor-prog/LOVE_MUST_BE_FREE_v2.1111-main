@@ -10,6 +10,12 @@ async function getMe(req: Request): Promise<{ id:number; role:'ADMIN'|'USER'}|nu
   } catch {}
   return null;
 }
+function digits(n:number){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
+function genPass(len=14){
+  const abc='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789', sym='!@#$%^&*';
+  let s=''; for(let i=0;i<len-2;i++) s+=abc[Math.floor(Math.random()*abc.length)];
+  s+=sym[Math.floor(Math.random()*sym.length)]; s+='9'; return s;
+}
 
 export async function GET(req: Request) {
   const me = await getMe(req);
@@ -27,19 +33,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const me = await getMe(req);
   if (!me || me.role !== 'ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
-
   const body = await req.json().catch(()=>null) as { adminNoteName?:string } | null;
   const note = (body?.adminNoteName || '').trim();
 
-  function digits(n:number){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
-  function genPass(len=14){
-    const abc='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789', sym='!@#$%^&*';
-    let s=''; for(let i=0;i<len-2;i++) s+=abc[Math.floor(Math.random()*abc.length)];
-    s+=sym[Math.floor(Math.random()*sym.length)]; s+='9'; return s;
-  }
-
-  let loginId=''; 
-  for(let i=0;i<10;i++){
+  let loginId='';
+  for(let i=0;i<12;i++){
     const c='u'+digits(6);
     const ex=await prisma.user.findUnique({where:{loginId:c}}).catch(()=>null);
     if(!ex){loginId=c; break;}
