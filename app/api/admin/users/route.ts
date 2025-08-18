@@ -11,13 +11,12 @@ async function getMe(req: Request): Promise<{ id:number; role:'ADMIN'|'USER'}|nu
   return null;
 }
 
-// GET /api/admin/users  — повертаємо ТІЛЬКИ звичайних користувачів
 export async function GET(req: Request) {
   const me = await getMe(req);
   if (!me || me.role !== 'ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
 
   const items = await prisma.user.findMany({
-    where: { role: 'USER' },                     // <-- важливо: не показуємо адмінів
+    where: { role: 'USER' },
     orderBy: { id: 'desc' },
     select: { id:true, loginId:true, loginPassword:true, role:true, adminNoteName:true, createdAt:true }
   });
@@ -25,7 +24,6 @@ export async function GET(req: Request) {
   return NextResponse.json({ items });
 }
 
-// POST /api/admin/users  — генеруємо логін/пароль; адмін вводить тільки note
 export async function POST(req: Request) {
   const me = await getMe(req);
   if (!me || me.role !== 'ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
@@ -33,26 +31,18 @@ export async function POST(req: Request) {
   const body = await req.json().catch(()=>null) as { adminNoteName?:string } | null;
   const note = (body?.adminNoteName || '').trim();
 
-  function randomDigits(n:number){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
-  function randomPassword(len=14){
-    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    const sym = '!@#$%^&*';
+  function digits(n:number){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
+  function genPass(len=14){
+    const abc='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789', sym='!@#$%^&*';
     let s=''; for(let i=0;i<len-2;i++) s+=abc[Math.floor(Math.random()*abc.length)];
     s+=sym[Math.floor(Math.random()*sym.length)]; s+='9'; return s;
   }
 
-  let loginId = '';
-  for (let i=0;i<10;i++){
-    const cand = 'u' + randomDigits(6);
-    const exists = await prisma.user.findUnique({ where: { loginId: cand } }).catch(()=>null);
-    if (!exists) { loginId = cand; break; }
-  }
-  if (!loginId) return NextResponse.json({ error:'Could not generate login' },{ status:500 });
-
-  const loginPassword = randomPassword(14);
+  let loginId=''; for(let i=0;i<10;i++){ const c='u'+digits(6); const ex=await prisma.user.findUnique({where:{loginId:c}}).catch(()=>null); if(!ex){loginId=c; break;} }
+  if(!loginId) return NextResponse.json({ error:'Could not generate login' },{ status:500 });
 
   const created = await prisma.user.create({
-    data: { loginId, loginPassword, role:'USER', adminNoteName: note || null },
+    data: { loginId, loginPassword: genPass(), role:'USER', adminNoteName: note || null },
     select: { id:true, loginId:true, loginPassword:true, adminNoteName:true, role:true, createdAt:true }
   });
 
