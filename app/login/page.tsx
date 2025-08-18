@@ -18,27 +18,23 @@ export default function LoginPage(){
       const r = await fetch('/api/auth/login', {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ loginId: login.trim(), password: password })
+        body: JSON.stringify({ loginId: login.trim(), password })
       });
-      if(!r.ok){
-        setErr('Invalid credentials');
-      }else{
+      if(!r.ok){ setErr('Invalid credentials'); }
+      else{
         const j = await r.json().catch(()=>null);
         const role = j?.user?.role;
         if(role === 'ADMIN') window.location.href = '/admin';
         else window.location.href = '/dashboard';
       }
-    }catch{
-      setErr('Network error');
-    }finally{
-      setBusy(false);
-    }
+    }catch{ setErr('Network error'); }
+    finally{ setBusy(false); }
   }
 
   return (
-    <div className="center-wrap">
+    <div className="bg-hero center-wrap">
       <div className="logo-bg">
-        <Image src="/images/Logo_3.webp" alt="logo" width={520} height={520} style={{objectFit:'contain', opacity:.95}} />
+        <Image src="/images/Logo_3.webp" alt="logo" width={620} height={620} style={{objectFit:'contain', opacity:.95}} />
       </div>
 
       <div className="form-layer">
