@@ -38,7 +38,12 @@ export async function POST(req: Request) {
     s+=sym[Math.floor(Math.random()*sym.length)]; s+='9'; return s;
   }
 
-  let loginId=''; for(let i=0;i<10;i++){ const c='u'+digits(6); const ex=await prisma.user.findUnique({where:{loginId:c}}).catch(()=>null); if(!ex){loginId=c; break;} }
+  let loginId=''; 
+  for(let i=0;i<10;i++){
+    const c='u'+digits(6);
+    const ex=await prisma.user.findUnique({where:{loginId:c}}).catch(()=>null);
+    if(!ex){loginId=c; break;}
+  }
   if(!loginId) return NextResponse.json({ error:'Could not generate login' },{ status:500 });
 
   const created = await prisma.user.create({
