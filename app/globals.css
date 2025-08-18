@@ -1,14 +1,111 @@
-:root{--bg1:#0b1220;--bg2:#0f172a;--panel:#111827;--border:#1f2937;--text:#e5e7eb}
-*{box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",sans-serif}
-a{text-decoration:none}
-.input{width:100%;background:#0b1220;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px}
-.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:transparent;color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer}
-.btn-primary{border-color:#22c55e;color:#22c55e}
-.card{background:rgba(17,24,39,.86);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 12px 28px rgba(0,0,0,.35)}
-.wrap{max-width:1100px;margin:26px auto;padding:0 12px}
-.page{min-height:100vh;position:relative;background-image:url(/images/Background_1.webp);background-size:cover;background-position:center}
-.logo-back{position:absolute;top:100px;left:0;right:0;display:grid;place-items:center;pointer-events:none;z-index:0}
-.form-shell{position:relative;z-index:1}
-.center{display:grid;place-items:center;padding:28px 12px;position:relative;z-index:1}
+html{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+body{margin:0}
+
+.lmf-bg{
+  min-height:100vh;
+  background:linear-gradient(180deg,#0b1220,#0f172a);
+  color:#e5e7eb;
+}
+
+.center-wrap{
+  min-height:100vh;
+  position:relative;
+  display:grid;
+  place-items:center;
+  padding:24px 12px;
+  overflow:hidden;
+}
+
+.logo-bg{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  z-index:0;
+}
+
+.form-layer{
+  position:relative;
+  z-index:1;
+  width:100%;
+  display:grid;
+  place-items:center;
+}
+
+.form-card{
+  width:520px;
+  max-width:92vw;
+  background:rgba(10,14,23,0.78);
+  border:1px solid #1f2937;
+  border-radius:16px;
+  box-shadow:0 18px 40px rgba(0,0,0,.45);
+  backdrop-filter:blur(8px);
+  padding:16px;
+}
+
+.h1{
+  margin:6px 0 12px;
+  text-align:center;
+  font-size:22px;
+  font-weight:800;
+}
+
+.label{
+  font-size:13px;
+  color:#94a3b8;
+  margin:10px 2px 6px;
+}
+
+.input{
+  width:100%;
+  background:#0b1220;
+  border:1px solid #1f2937;
+  color:#e5e7eb;
+  border-radius:10px;
+  padding:12px 12px;
+  outline:none;
+}
+
+.input::placeholder{color:#7f8ea3}
+
+.btn{
+  display:inline-block;
+  border:1px solid #38bdf8;
+  color:#38bdf8;
+  background:transparent;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+  text-decoration:none;
+}
+
+.btn-primary{
+  border-color:#22c55e;
+  color:#22c55e;
+}
+
+.row{display:flex; gap:10px; flex-wrap:wrap}
+.mt12{margin-top:12px}
+
+.panel{
+  background:rgba(17,24,39,0.86);
+  border:1px solid #1f2937;
+  border-radius:12px;
+  padding:10px;
+}
+
+/* базові штуки для адмін-списків, щоб не виглядало «голим» */
+.admin-row{
+  background:rgba(17,24,39,0.86);
+  border:1px solid #1f2937;
+  border-radius:12px;
+  padding:10px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:8px 0;
+}
