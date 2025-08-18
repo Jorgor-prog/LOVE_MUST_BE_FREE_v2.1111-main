@@ -1,11 +1,16 @@
-generator client { provider = "prisma-client-js" }
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-enum Role { USER ADMIN }
+enum Role {
+  USER
+  ADMIN
+}
 
 model User {
   id            Int       @id @default(autoincrement())
@@ -34,12 +39,12 @@ model Profile {
 }
 
 model CodeConfig {
-  userId     Int    @id
-  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code       String @default("")
-  intervalMs Int    @default(120)
+  userId     Int     @id
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code       String  @default("")
+  intervalMs Int     @default(120)
   enabled    Boolean @default(true)
-  lastStep   Int    @default(1)
+  lastStep   Int     @default(1)
 }
 
 model Message {
