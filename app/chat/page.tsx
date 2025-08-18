@@ -1,5 +1,4 @@
 'use client';
-export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useRef, useState } from 'react';
 import UserTopBar from '@/components/UserTopBar';
@@ -14,7 +13,6 @@ export default function UserChatPage(){
   const [text, setText] = useState('');
   const boxRef = useRef<HTMLDivElement|null>(null);
   const lastIdRef = useRef<number>(0);
-  const [err, setErr] = useState<string|null>(null);
 
   useEffect(()=>{
     (async()=>{
@@ -28,10 +26,9 @@ export default function UserChatPage(){
 
   async function loadAdmin(){
     const j = await fetch('/api/chat/admin-id', { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
-    const raw = (j && (j.id ?? j.adminId)) as any;
-    const id = Number(raw || 0);
-    setAdminId(Number.isFinite(id) ? id : 0);
-    return Number.isFinite(id) ? id : 0;
+    const id = Number(j?.id || 0);
+    setAdminId(id);
+    return id;
   }
 
   function scrollBottom(){ if(boxRef.current){ boxRef.current.scrollTop = boxRef.current.scrollHeight + 1000; } }
@@ -54,14 +51,8 @@ export default function UserChatPage(){
   useEffect(()=>{ const id = setInterval(loadHead, 3500); return ()=>clearInterval(id); },[]);
 
   async function send(){
-    setErr(null);
-    const to = adminId || (await loadAdmin());
-    if(!to || !text.trim()) return;
-    const r = await fetch('/api/chat/send', {
-      method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ toId: to, text: text.trim() })
-    }).catch(()=>null);
-    if(!r || !r.ok){ setErr('Failed to send'); return; }
+    if(!adminId || !text.trim()) return;
+    await fetch('/api/chat/send', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ toId: adminId, text: text.trim() }) }).catch(()=>{});
     setText('');
     await loadFull();
   }
@@ -86,18 +77,13 @@ export default function UserChatPage(){
               </div>
             </div>
           ))}
-          {!list.length && <div style={{color:'#94a3b8'}}>No messages yet</div>}
         </div>
 
         <div style={{display:'flex', gap:8, marginTop:8}}>
-          <input
-            value={text}
-            onChange={e=>setText(e.currentTarget.value)}
-            placeholder="Write a message…"
-            style={{flex:1, background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}} />
+          <input value={text} onChange={e=>setText(e.target.value)} placeholder="Write a message…"
+                 style={{flex:1, background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}} />
           <button className="btn" onClick={send} style={{borderColor:'#38bdf8', color:'#38bdf8'}}>Send</button>
         </div>
-        {err && <div style={{color:'#f87171', marginTop:8}}>{err}</div>}
       </div>
     </div>
   );
