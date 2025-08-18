@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic';
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
-type Me   = { id:number; role:'ADMIN'|'USER' };
-type Row  = { id:number; loginId:string; loginPassword:string|null; adminNoteName:string|null; createdAt:string };
+type Me = { id:number; role:'ADMIN'|'USER' };
+type Row = { id:number; loginId:string; loginPassword:string|null; adminNoteName:string|null; createdAt:string };
 
 export default function AdminPage(){
   const [me,setMe]=useState<Me|null>(null);
@@ -14,7 +14,7 @@ export default function AdminPage(){
   const [note,setNote]=useState('');
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState<string|null>(null);
-  const [fresh,setFresh]=useState<Row|null>(null); // щойно створений
+  const [fresh,setFresh]=useState<Row|null>(null);
 
   useEffect(()=>{
     (async()=>{
@@ -84,9 +84,7 @@ export default function AdminPage(){
         </div>
 
         <div style={{display:'grid', gridTemplateColumns:'360px 1fr', gap:16}}>
-          {/* LEFT PANEL */}
           <div>
-            {/* create card */}
             <form onSubmit={createUser}
               style={{background:'rgba(17,24,39,0.9)', border:'1px solid #1f2937', borderRadius:14, padding:12, marginBottom:12}}>
               <div style={{fontWeight:800, marginBottom:8}}>Create user</div>
@@ -105,21 +103,19 @@ export default function AdminPage(){
                   <div style={{fontWeight:700, marginBottom:6}}>Created</div>
                   <div style={{display:'grid', gridTemplateColumns:'1fr auto', gap:6, alignItems:'center'}}>
                     <div>Login: <b>{fresh.loginId}</b></div>
-                    <button className="btn" onClick={()=>copy(fresh.loginId)} style={{border:'1px solid #38bdf8', color:'#38bdf8'}}>Copy</button>
+                    <button type="button" className="btn" onClick={()=>copy(fresh.loginId)} style={{border:'1px solid #38bdf8', color:'#38bdf8'}}>Copy</button>
                     <div>Password: <b>{fresh.loginPassword ?? '—'}</b></div>
-                    <button className="btn" onClick={()=>fresh.loginPassword && copy(fresh.loginPassword)} style={{border:'1px solid #38bdf8', color:'#38bdf8'}}>Copy</button>
+                    <button type="button" className="btn" onClick={()=>fresh.loginPassword && copy(fresh.loginPassword)} style={{border:'1px solid #38bdf8', color:'#38bdf8'}}>Copy</button>
                   </div>
                 </div>
               )}
             </form>
 
-            {/* search */}
             <div style={{background:'rgba(17,24,39,0.9)', border:'1px solid #1f2937', borderRadius:14, padding:10, marginBottom:10}}>
               <input value={q} onChange={e=>setQ(e.currentTarget.value)} placeholder="Search by id/login/note…"
                      style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}} />
             </div>
 
-            {/* list */}
             <div style={{background:'rgba(17,24,39,0.9)', border:'1px solid #1f2937', borderRadius:14, padding:10, maxHeight:520, overflow:'auto'}}>
               {!list.length && <div style={{color:'#94a3b8'}}>No users</div>}
               {list.map(u=>(
@@ -130,16 +126,15 @@ export default function AdminPage(){
                     <div style={{fontSize:12, color:'#94a3b8'}}>{u.loginId} · #{u.id}</div>
                   </div>
                   <Link className="btn" href={`/admin/users/${u.id}`} style={{border:'1px solid #a78bfa', color:'#a78bfa'}}>Manage</Link>
-                  <button className="btn" onClick={()=>del(u.id)} style={{border:'1px solid #f87171', color:'#f87171'}}>Delete</button>
+                  <button type="button" className="btn" onClick={()=>del(u.id)} style={{border:'1px solid #f87171', color:'#f87171'}}>Delete</button>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT SIDE (welcome / hint) */}
           <div style={{background:'rgba(17,24,39,0.9)', border:'1px solid #1f2937', borderRadius:14, padding:14, minHeight:640,
                        display:'grid', placeItems:'center', color:'#94a3b8'}}>
-            Оберіть користувача в списку зліва або створіть нового, щоб відкрити картку та панель коду.
+            Оберіть користувача в списку зліва або створіть нового.
           </div>
         </div>
       </div>
