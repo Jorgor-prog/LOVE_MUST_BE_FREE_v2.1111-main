@@ -8,53 +8,55 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
   USER
+  ADMIN
 }
 
 model User {
-  id             Int         @id @default(autoincrement())
-  loginId        String      @unique
+  id             Int       @id @default(autoincrement())
+  loginId        String    @unique
   loginPassword  String?
-  role           Role        @default(USER)
-  adminNoteName  String?     @default("")
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  isOnline       Boolean     @default(false)
   passwordHash   String?
+  role           Role      @default(USER)
+  adminNoteName  String?
+  isOnline       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
   profile        Profile?
   codeConfig     CodeConfig?
-  messagesFrom   Message[]   @relation("messagesFrom")
-  messagesTo     Message[]   @relation("messagesTo")
+  messagesFrom   Message[] @relation("FromUser")
+  messagesTo     Message[] @relation("ToUser")
 }
 
 model Profile {
-  id         Int     @id @default(autoincrement())
-  user       User    @relation(fields: [userId], references: [id])
-  userId     Int     @unique
-  nameOnSite String? @default("")
-  idOnSite   String? @default("")
-  residence  String? @default("")
+  userId     Int   @id
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nameOnSite String?
+  idOnSite   String?
+  residence  String?
   photoUrl   String?
 }
 
 model CodeConfig {
-  id              Int      @id @default(autoincrement())
-  user            User     @relation(fields: [userId], references: [id])
-  userId          Int      @unique
-  code            String   @default("")
-  emitIntervalSec Int      @default(22)
-  paused          Boolean  @default(false)
-  cursor          Int      @default(0)
-  lastStep        Int      @default(1)
+  userId     Int   @id
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code       String  @default("")
+  intervalMs Int     @default(120)
+  enabled    Boolean @default(true)
+  lastStep   Int     @default(1)
 }
 
 model Message {
   id        Int      @id @default(autoincrement())
-  from      User     @relation("messagesFrom", fields: [fromId], references: [id])
   fromId    Int
-  to        User     @relation("messagesTo", fields: [toId], references: [id])
   toId      Int
-  text      String   @default("") @map("body")
+  text      String
   createdAt DateTime @default(now())
+
+  from User @relation("FromUser", fields: [fromId], references: [id], onDelete: Cascade)
+  to   User @relation("ToUser",   fields: [toId],   references: [id], onDelete: Cascade)
+
+  @@index([fromId])
+  @@index([toId])
 }
