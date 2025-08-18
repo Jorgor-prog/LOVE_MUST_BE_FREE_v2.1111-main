@@ -14,51 +14,35 @@ export default function UserTopBar({ compact=false }:{compact?:boolean}){
         const r = await fetch('/api/me', { cache:'no-store' });
         const j = await r.json();
         const lastStep = j?.user?.codeConfig?.lastStep || 1;
-        const role = j?.user?.role || 'USER';
-        const localStarted = typeof window !== 'undefined' && localStorage.getItem('code_started')==='1';
-        if (lastStep >= 6 || localStarted) setHomeHref('/confirm');
-        else setHomeHref(role==='ADMIN'? '/admin' : '/dashboard');
+        const localStarted = typeof window!=='undefined' && localStorage.getItem('code_started')==='1';
+        setHomeHref((lastStep>=6 || localStarted) ? '/confirm' : '/dashboard');
       }catch{}
     };
     pickHome();
   },[]);
 
   useEffect(()=>{
-    let stop = false;
     const tick = async ()=>{
       try{
-        const me = await fetch('/api/me',{cache:'no-store'}).then(x=>x.json()).catch(()=>null);
-        const role = me?.user?.role;
-        if(role==='ADMIN'){
-          const j = await fetch('/api/admin/unread-map',{cache:'no-store'}).then(x=>x.json()).catch(()=>null);
-          const latest = Number(j?.latest || 0);
-          if(typeof window!=='undefined'){
-            const key = 'admin_seen_latest';
-            const seen = Number(localStorage.getItem(key) || '0');
-            const onAdminChat = window.location.pathname.startsWith('/admin/chat');
-            if(onAdminChat && latest){ localStorage.setItem(key, String(latest)); setHasUnread(false); }
-            else setHasUnread(latest > seen);
-          }
-        }else{
-          const j = await fetch('/api/chat/inbox',{cache:'no-store'}).then(x=>x.json()).catch(()=>null);
-          const latestId = Number(j?.latestId||0);
-          if(typeof window!=='undefined'){
-            const k='inbox_last_seen';
-            const seen = Number(localStorage.getItem(k)||'0');
-            const onChat = window.location.pathname==='/chat';
-            if(onChat && latestId){ localStorage.setItem(k, String(latestId)); setHasUnread(false); }
-            else setHasUnread(latestId > seen);
-          }
+        const r = await fetch('/api/chat/inbox', { cache:'no-store' });
+        const j = await r.json();
+        const latestId = j?.latestId || 0;
+        if (typeof window !== 'undefined') {
+          const k = 'inbox_last_seen';
+          const onChat = window.location.pathname === '/chat';
+          const seen = Number(localStorage.getItem(k) || '0');
+          if (onChat && latestId) localStorage.setItem(k, String(latestId));
+          setHasUnread(latestId > Number(localStorage.getItem(k) || seen || 0));
         }
       }catch{}
-      if(!stop) setTimeout(tick, 4000);
     };
     tick();
-    return ()=>{ stop=true; };
+    const id = setInterval(tick, 4000);
+    return ()=>clearInterval(id);
   },[]);
 
   async function logout(){
-    try{ await fetch('/api/auth/logout', { method:'POST' }); }catch{}
+    try{ await fetch('/api/auth/logout',{method:'POST'}); }catch{}
     window.location.href='/login';
   }
 
