@@ -1,74 +1,33 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser } from '@/lib/auth';
+import { getUserFromRequest } from '@/lib/auth';
 
-export const runtime = 'nodejs';
+export async function GET(req: NextRequest){
+  const me = await getUserFromRequest(req);
+  if(!me || me.role!=='USER'){
+    return new Response('Unauthorized',{status:401});
+  }
 
-function sleep(ms:number){ return new Promise(res=>setTimeout(res, ms)); }
+  const ts = new TransformStream();
+  const writer = ts.writable.getWriter();
 
-export async function GET() {
-  const me = await getSessionUser();
-  if(!me) return NextResponse.json({ error:'Unauthorized' }, { status:401 });
+  const enc = (obj:any)=>`data: ${JSON.stringify(obj)}\n\n`;
+  const write = (obj:any)=>writer.write(new TextEncoder().encode(enc(obj)));
 
-  // Убедимся, что есть конфиг
-  let cfg = await prisma.codeConfig.upsert({
-    where: { userId: me.id },
-    update: {},
-    create: { userId: me.id, code:'', emitIntervalSec:22, paused:false, cursor:0, lastStep:6 }
-  });
+  const headers = {
+    'Content-Type':'text/event-stream',
+    'Cache-Control':'no-cache, no-transform',
+    'Connection':'keep-alive',
+  } as Record<string,string>;
 
-  let text = cfg.code || '';
-  let cursor = cfg.cursor || 0;
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-      async function send(type:string, value:any){
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({type, value})}\n\n`));
-      }
-
-      // помечаем шаг
-      await prisma.codeConfig.update({ where:{ userId: me.id }, data:{ lastStep:6 } });
-
-      try{
-        while (true) {
-          // каждый тик берем свежие настройки
-          cfg = await prisma.codeConfig.findUnique({ where: { userId: me.id } }) as any;
-          if (!cfg) break;
-
-          if (cfg.paused) break;
-
-          // если код изменился — подхватываем
-          if ((cfg.code || '') !== text) {
-            text = cfg.code || '';
-          }
-
-          // синхронизируем курсор, но не откатываем назад
-          cursor = Math.max(cursor, cfg.cursor || 0);
-
-          if (cursor >= text.length) break;
-
-          const ch = text[cursor];
-          await send('char', ch);
-
-          cursor += 1;
-          await prisma.codeConfig.update({ where:{ userId: me.id }, data:{ cursor } });
-
-          const intervalMs = Math.max(1000, (cfg.emitIntervalSec || 22) * 1000);
-          await sleep(intervalMs);
-        }
-      } finally {
-        await send('done', true);
-        controller.close();
-      }
+  let i = 0;
+  const code = (await prisma.codeConfig.findUnique({ where:{ userId: me.id } }))?.seed || 'ABCDEFG123456';
+  const tick = setInterval(()=>{
+    if(i>=code.length){
+      write({type:'end'}); clearInterval(tick); writer.close(); return;
     }
-  });
+    write({type:'char', value: code[i]}); i++;
+  }, 120);
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive'
-    }
-  });
+  return new Response(ts.readable,{ headers });
 }
