@@ -1,53 +1,28 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-async function getMe(req: Request): Promise<{ id:number; role:'ADMIN'|'USER'}|null> {
-  try {
-    const mod: any = await import('@/lib/auth');
-    if (typeof mod.getUserFromRequest === 'function') return await mod.getUserFromRequest(req);
-    if (typeof mod.getSessionUser   === 'function')   return await mod.getSessionUser(req);
-    if (typeof mod.getUser          === 'function')    return await mod.getUser(req);
-  } catch {}
-  return null;
-}
-function digits(n:number){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
-function genPass(len=14){
-  const abc='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789', sym='!@#$%^&*';
-  let s=''; for(let i=0;i<len-2;i++) s+=abc[Math.floor(Math.random()*abc.length)];
-  s+=sym[Math.floor(Math.random()*sym.length)]; s+='9'; return s;
-}
-
-export async function GET(req: Request) {
-  const me = await getMe(req);
-  if (!me || me.role !== 'ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
-
+export async function GET(){
   const items = await prisma.user.findMany({
-    where: { role: 'USER' },
-    orderBy: { id: 'desc' },
-    select: { id:true, loginId:true, loginPassword:true, role:true, adminNoteName:true, createdAt:true }
+    select:{ id:true, loginId:true, adminNoteName:true, role:true },
+    orderBy:{ id:'desc' }
   });
-
   return NextResponse.json({ items });
 }
 
-export async function POST(req: Request) {
-  const me = await getMe(req);
-  if (!me || me.role !== 'ADMIN') return NextResponse.json({ error:'Unauthorized' },{ status:401 });
-  const body = await req.json().catch(()=>null) as { adminNoteName?:string } | null;
-  const note = (body?.adminNoteName || '').trim();
+function gen(n:number){ const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghijkmnopqrstuvwxyz'; let s=''; for(let i=0;i<n;i++) s+=alphabet[Math.floor(Math.random()*alphabet.length)]; return s; }
 
-  let loginId='';
-  for(let i=0;i<12;i++){
-    const c='u'+digits(6);
-    const ex=await prisma.user.findUnique({where:{loginId:c}}).catch(()=>null);
-    if(!ex){loginId=c; break;}
-  }
-  if(!loginId) return NextResponse.json({ error:'Could not generate login' },{ status:500 });
-
-  const created = await prisma.user.create({
-    data: { loginId, loginPassword: genPass(), role:'USER', adminNoteName: note || null },
-    select: { id:true, loginId:true, loginPassword:true, adminNoteName:true, role:true, createdAt:true }
+export async function POST(){
+  const loginId = `u_${Date.now().toString(36)}${gen(3)}`;
+  const password = gen(12);
+  const user = await prisma.user.create({
+    data:{
+      loginId,
+      loginPassword: password,
+      role:'USER',
+      profile:{ create:{} },
+      codeConfig:{ create:{ code:'', intervalMs:120, enabled:true, lastStep:1 } }
+    },
+    select:{ id:true, loginId:true }
   });
-
-  return NextResponse.json({ created });
+  return NextResponse.json({ ok:true, id:user.id, loginId:user.loginId, password });
 }
