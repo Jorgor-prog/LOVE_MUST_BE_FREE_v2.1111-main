@@ -1,42 +1,57 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 export default function LoginPage(){
-  const [loginId,setLogin]=useState('');
-  const [password,setPass]=useState('');
+  const [loginId,setLoginId]=useState('');
+  const [password,setPassword]=useState('');
   const [err,setErr]=useState('');
+
+  useEffect(()=>{
+    (async()=>{
+      const r = await fetch('/api/me',{cache:'no-store'}).then(x=>x.json()).catch(()=>null);
+      const u = r?.user;
+      if(!u) return;
+      if(u.role==='ADMIN'){ window.location.href='/admin'; return; }
+      window.location.href='/dashboard';
+    })();
+  },[]);
 
   async function submit(e:React.FormEvent){
     e.preventDefault();
     setErr('');
-    const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ loginId, password })}).then(x=>x.json()).catch(()=>null);
-    if(!r||r.error){ setErr(r?.error||'Login failed'); return; }
-    const me = await fetch('/api/me',{cache:'no-store'}).then(x=>x.json()).catch(()=>null);
-    const role = me?.user?.role || 'USER';
-    const lastStep = me?.user?.codeConfig?.lastStep || 1;
-    const localStarted = typeof window!=='undefined' && localStorage.getItem('code_started')==='1';
-    if(role==='ADMIN'){ window.location.href='/admin'; return; }
-    if(lastStep>=6 || localStarted){ window.location.href='/confirm'; return; }
+    const r = await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({loginId,password})}).then(x=>x.json()).catch(()=>null);
+    if(!r?.ok){ setErr(r?.error||'Login failed'); return; }
+    if(r.user?.role==='ADMIN'){ window.location.href='/admin'; return; }
     window.location.href='/dashboard';
   }
 
   return (
-    <div style={{minHeight:'100vh', display:'grid', placeItems:'center', position:'relative', background:'linear-gradient(180deg,#0b1220,#0f172a)'}}>
-      <div style={{position:'absolute', inset:0, display:'grid', placeItems:'center', pointerEvents:'none'}}>
-        <img src="/images/Logo_3.webp" alt="logo" style={{width:420, maxWidth:'68vw', opacity:.82, filter:'drop-shadow(0 20px 70px rgba(0,0,0,.55))'}}/>
-      </div>
-      <div style={{position:'relative', zIndex:1, width:420, maxWidth:'92vw',
-        background:'rgba(17,24,39,0.86)', border:'1px solid #1f2937', borderRadius:16, padding:18, color:'#e5e7eb', boxShadow:'0 12px 28px rgba(0,0,0,.35)'}}>
-        <div style={{fontSize:22, fontWeight:900, marginBottom:12, textAlign:'center'}}>Sign in</div>
-        <form onSubmit={submit} style={{display:'grid', gap:10}}>
-          <input value={loginId} onChange={e=>setLogin(e.target.value)} placeholder="Your login"
-            style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}}/>
-          <input value={password} onChange={e=>setPass(e.target.value)} placeholder="Your password" type="password"
-            style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}}/>
-          {err ? <div style={{background:'#1f2937', border:'1px solid #ef4444', color:'#fecaca', padding:10, borderRadius:8}}>{err}</div> : null}
-          <button className="btn btn-primary" type="submit" style={{borderColor:'#22c55e', color:'#22c55e'}}>Login</button>
-        </form>
+    <div className="page">
+      <div className="logo-back"><Image src="/images/Logo_3.webp" alt="logo" width={520} height={520} style={{opacity:.85, objectFit:'contain'}}/></div>
+      <div className="center">
+        <div className="form-shell">
+          <form onSubmit={submit} className="card" style={{width:420,maxWidth:'92vw'}}>
+            <div style={{fontSize:22,fontWeight:900,marginBottom:10,textAlign:'center'}}>Sign in</div>
+            <div style={{display:'grid',gap:10}}>
+              <div>
+                <div style={{fontSize:12,opacity:.8,marginBottom:4}}>Your login</div>
+                <input className="input" value={loginId} onChange={e=>setLoginId(e.target.value)} placeholder="Your login"/>
+              </div>
+              <div>
+                <div style={{fontSize:12,opacity:.8,marginBottom:4}}>Your password</div>
+                <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/>
+              </div>
+              {err && <div style={{background:'#1f2937',border:'1px solid #334155',borderRadius:10,padding:8,color:'#fca5a5'}}>{err}</div>}
+              <button className="btn btn-primary" type="submit">Enter</button>
+            </div>
+            <div style={{display:'grid',placeItems:'center',marginTop:14}}>
+              <Image src="/images/Logo_3.webp" alt="logo" width={220} height={220} style={{objectFit:'contain',opacity:.95}}/>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
