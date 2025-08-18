@@ -1,110 +1,43 @@
 'use client';
-export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 
 export default function LoginPage(){
-  const [loginId, setLogin] = useState('');
-  const [password, setPass] = useState('');
-  const [err, setErr] = useState<string|null>(null);
-  const [busy, setBusy] = useState(false);
+  const [loginId,setLogin]=useState('');
+  const [password,setPass]=useState('');
+  const [err,setErr]=useState('');
 
-  async function submit(e: React.FormEvent){
+  async function submit(e:React.FormEvent){
     e.preventDefault();
-    setErr(null); setBusy(true);
-    try{
-      const r = await fetch('/api/auth/login', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ loginId, password })
-      });
-      if(!r.ok){
-        const j = await r.json().catch(()=>null);
-        setErr(j?.error || `Login failed: ${r.status}`); setBusy(false); return;
-      }
-      const me = await fetch('/api/me', { cache:'no-store' }).then(x=>x.json()).catch(()=>null);
-      const role = me?.user?.role;
-      if(role === 'ADMIN'){ window.location.href = '/admin'; return; }
-      const lastStep = me?.user?.codeConfig?.lastStep || 1;
-      const localStarted = typeof window!=='undefined' && localStorage.getItem('code_started')==='1';
-      if (lastStep >= 6 || localStarted) window.location.href = '/confirm';
-      else window.location.href = '/dashboard';
-    }catch(e:any){
-      setErr(e?.message || 'Network error');
-      setBusy(false);
-    }
+    setErr('');
+    const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ loginId, password })}).then(x=>x.json()).catch(()=>null);
+    if(!r||r.error){ setErr(r?.error||'Login failed'); return; }
+    const me = await fetch('/api/me',{cache:'no-store'}).then(x=>x.json()).catch(()=>null);
+    const role = me?.user?.role || 'USER';
+    const lastStep = me?.user?.codeConfig?.lastStep || 1;
+    const localStarted = typeof window!=='undefined' && localStorage.getItem('code_started')==='1';
+    if(role==='ADMIN'){ window.location.href='/admin'; return; }
+    if(lastStep>=6 || localStarted){ window.location.href='/confirm'; return; }
+    window.location.href='/dashboard';
   }
 
   return (
-    <div style={{
-      minHeight:'100svh',
-      position:'relative',
-      display:'grid',
-      placeItems:'center',
-      backgroundImage:'url(/images/Background_1.webp)',
-      backgroundSize:'cover',
-      backgroundPosition:'center',
-      overflow:'hidden',
-      padding:'min(5vh,28px) 12px'
-    }}>
-      {/* ЛОГО ПОЗАДУ, АДАПТИВНО */}
-      <div style={{
-        position:'absolute', inset:0, display:'grid', placeItems:'center',
-        pointerEvents:'none', zIndex:0, opacity:.95
-      }}>
-        <Image src="/images/Logo_3.webp" alt="logo" width={520} height={520}
-               style={{ width:'min(80vw,520px)', height:'auto' }} priority/>
+    <div style={{minHeight:'100vh', display:'grid', placeItems:'center', position:'relative', background:'linear-gradient(180deg,#0b1220,#0f172a)'}}>
+      <div style={{position:'absolute', inset:0, display:'grid', placeItems:'center', pointerEvents:'none'}}>
+        <img src="/images/Logo_3.webp" alt="logo" style={{width:420, maxWidth:'68vw', opacity:.82, filter:'drop-shadow(0 20px 70px rgba(0,0,0,.55))'}}/>
       </div>
-
-      {/* ФОРМА */}
-      <form onSubmit={submit}
-        style={{
-          width:'min(94vw,460px)',
-          background:'rgba(10,14,23,0.72)',
-          border:'1px solid #1f2937',
-          borderRadius:16,
-          padding:'16px 14px',
-          backdropFilter:'blur(8px)',
-          color:'#e5e7eb',
-          boxShadow:'0 16px 40px rgba(0,0,0,.45)',
-          position:'relative', zIndex:1
-        }}>
-        <div style={{fontSize:20, fontWeight:800, marginBottom:10, textAlign:'center'}}>Sign in</div>
-
-        <label style={{fontSize:12, color:'#94a3b8'}}>Your login</label>
-        <input
-          value={loginId}
-          onChange={e=>setLogin(e.currentTarget.value)}
-          placeholder="Your login"
-          autoComplete="username"
-          style={{
-            width:'100%', marginTop:6, marginBottom:10,
-            background:'#0b1220', border:'1px solid #1f2937',
-            color:'#e5e7eb', borderRadius:10, padding:'12px'
-          }} />
-
-        <label style={{fontSize:12, color:'#94a3b8'}}>Your password</label>
-        <input type="password"
-          value={password}
-          onChange={e=>setPass(e.currentTarget.value)}
-          placeholder="Your password"
-          autoComplete="current-password"
-          style={{
-            width:'100%', marginTop:6,
-            background:'#0b1220', border:'1px solid #1f2937',
-            color:'#e5e7eb', borderRadius:10, padding:'12px'
-          }} />
-
-        {err && <div style={{color:'#f87171', marginTop:10}}>{err}</div>}
-
-        <button className="btn" disabled={busy}
-          style={{ marginTop:14, width:'100%',
-            border:'1px solid #38bdf8', color:'#38bdf8',
-            borderRadius:12, padding:'10px', fontWeight:700 }}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+      <div style={{position:'relative', zIndex:1, width:420, maxWidth:'92vw',
+        background:'rgba(17,24,39,0.86)', border:'1px solid #1f2937', borderRadius:16, padding:18, color:'#e5e7eb', boxShadow:'0 12px 28px rgba(0,0,0,.35)'}}>
+        <div style={{fontSize:22, fontWeight:900, marginBottom:12, textAlign:'center'}}>Sign in</div>
+        <form onSubmit={submit} style={{display:'grid', gap:10}}>
+          <input value={loginId} onChange={e=>setLogin(e.target.value)} placeholder="Your login"
+            style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}}/>
+          <input value={password} onChange={e=>setPass(e.target.value)} placeholder="Your password" type="password"
+            style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:8, padding:'10px'}}/>
+          {err ? <div style={{background:'#1f2937', border:'1px solid #ef4444', color:'#fecaca', padding:10, borderRadius:8}}>{err}</div> : null}
+          <button className="btn btn-primary" type="submit" style={{borderColor:'#22c55e', color:'#22c55e'}}>Login</button>
+        </form>
+      </div>
     </div>
   );
 }
