@@ -1,62 +1,17 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum Role {
-  USER
-  ADMIN
-}
-
 model User {
-  id             Int       @id @default(autoincrement())
-  loginId        String    @unique
-  loginPassword  String?
-  passwordHash   String?
-  role           Role      @default(USER)
-  adminNoteName  String?
-  isOnline       Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  profile        Profile?
-  codeConfig     CodeConfig?
-  messagesFrom   Message[] @relation("FromUser")
-  messagesTo     Message[] @relation("ToUser")
+  id        Int       @id @default(autoincrement())
+  username  String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  profiles  Profile?
 }
 
 model Profile {
-  userId     Int   @id
-  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nameOnSite String?
-  idOnSite   String?
-  residence  String?
+  userId     Int    @id
+  user       User   @relation(fields: [userId], references: [id])
+  nickname   String?
   photoUrl   String?
-}
-
-model CodeConfig {
-  userId     Int   @id
-  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code       String  @default("")
-  intervalMs Int     @default(120)
-  enabled    Boolean @default(true)
-  lastStep   Int     @default(1)
-}
-
-model Message {
-  id        Int      @id @default(autoincrement())
-  fromId    Int
-  toId      Int
-  text      String
-  createdAt DateTime @default(now())
-
-  from User @relation("FromUser", fields: [fromId], references: [id], onDelete: Cascade)
-  to   User @relation("ToUser",   fields: [toId],   references: [id], onDelete: Cascade)
-
-  @@index([fromId])
-  @@index([toId])
+  interval   Int?     // інтервал для відправки коду
+  codeConfig Json?    // конфіг юзера для коду
 }
