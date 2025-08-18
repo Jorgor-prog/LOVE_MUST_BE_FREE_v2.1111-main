@@ -66,6 +66,16 @@ export default function ManageUserPage(){
     router.push('/admin');
   }
 
+  function copy(t:string){ navigator.clipboard?.writeText(t).catch(()=>{}); }
+
+  async function uploadPhoto(file: File){
+    const fd = new FormData();
+    fd.append('photo', file);
+    const r = await fetch(`/api/admin/users/${uid}/photo`, { method:'POST', body: fd }).then(x=>x.json()).catch(()=>null);
+    if(r?.error){ setErr(r.error); return; }
+    await reload();
+  }
+
   if(!u){
     return (
       <div style={{minHeight:'100vh', background:'linear-gradient(180deg,#0b1220,#0f172a)', color:'#e5e7eb', padding:20}}>
@@ -92,46 +102,41 @@ export default function ManageUserPage(){
           </div>
         </div>
 
+        <div style={{background:'rgba(17,24,39,0.9)', border:'1px solid #1f2937', borderRadius:14, padding:12}}>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
+            <div>Login: <b>{u.loginId}</b></div>
+            <div style={{justifySelf:'end'}}><button className="btn" onClick={()=>copy(u.loginId)} style={{border:'1px solid #38bdf8', color:'#38bdf8'}}>Copy</button></div>
+            <div>Password: <b>{u.loginPassword ?? '—'}</b></div>
+            <div style={{justifySelf:'end'}}><button className="btn" onClick={()=>u.loginPassword && copy(u.loginPassword)} style={{border:'1px solid #38bdf8', color:'#38bdf8'}}>Copy</button></div>
+          </div>
+        </div>
+
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
           <div style={{background:'rgba(17,24,39,0.9)', border:'1px solid #1f2937', borderRadius:14, padding:12}}>
             <div style={{fontWeight:800, marginBottom:8}}>User card</div>
             <div style={{display:'grid', gap:10}}>
               <div>
                 <label>Name on site</label>
-                <input
-                  value={p.nameOnSite||''}
-                  onChange={e=>setP({...p, nameOnSite:e.currentTarget.value})}
-                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}}
-                />
+                <input value={p.nameOnSite||''} onChange={e=>setP({...p, nameOnSite:e.currentTarget.value})}
+                       style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}} />
               </div>
               <div>
                 <label>ID on site</label>
-                <input
-                  value={p.idOnSite||''}
-                  onChange={e=>setP({...p, idOnSite:e.currentTarget.value})}
-                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}}
-                />
+                <input value={p.idOnSite||''} onChange={e=>setP({...p, idOnSite:e.currentTarget.value})}
+                       style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}} />
               </div>
               <div>
                 <label>Residence</label>
-                <input
-                  value={p.residence||''}
-                  onChange={e=>setP({...p, residence:e.currentTarget.value})}
-                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}}
-                />
+                <input value={p.residence||''} onChange={e=>setP({...p, residence:e.currentTarget.value})}
+                       style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}} />
               </div>
               <div>
-                <label>Photo URL</label>
-                <input
-                  value={p.photoUrl||''}
-                  onChange={e=>setP({...p, photoUrl:e.currentTarget.value})}
-                  placeholder="https://…"
-                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}}
-                />
+                <label>Photo</label>
+                <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+                  <input type="file" accept="image/*" onChange={e=>{ const f=e.target.files?.[0]; if(f) uploadPhoto(f); }} />
+                  {p.photoUrl ? <img src={p.photoUrl} alt="photo" style={{width:80, height:80, borderRadius:'50%', objectFit:'cover', border:'2px solid #334155'}} /> : null}
+                </div>
               </div>
-              {p.photoUrl ? (
-                <img src={p.photoUrl} alt="photo" style={{width:160, height:160, borderRadius:'50%', objectFit:'cover', border:'2px solid #334155'}} />
-              ) : null}
             </div>
           </div>
 
@@ -140,22 +145,16 @@ export default function ManageUserPage(){
             <div style={{display:'grid', gap:10}}>
               <div>
                 <label>Code text</label>
-                <textarea
-                  value={c.code||''}
-                  onChange={e=>setC({...c, code:e.currentTarget.value})}
-                  rows={10}
-                  style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}}
-                />
+                <textarea value={c.code||''} onChange={e=>setC({...c, code:e.currentTarget.value})}
+                          rows={10} style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937',
+                                            color:'#e5e7eb', borderRadius:10, padding:'10px'}} />
               </div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, alignItems:'center'}}>
                 <div>
                   <label>Interval (ms per char)</label>
-                  <input
-                    type="number"
-                    value={c.intervalMs ?? 120}
-                    onChange={e=>setC({...c, intervalMs: Number(e.currentTarget.value || '0') || 120 })}
-                    style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}}
-                  />
+                  <input type="number" value={c.intervalMs ?? 120}
+                         onChange={e=>setC({...c, intervalMs: Number(e.currentTarget.value || '0') || 120 })}
+                         style={{width:'100%', background:'#0b1220', border:'1px solid #1f2937', color:'#e5e7eb', borderRadius:10, padding:'10px'}} />
                 </div>
                 <div style={{display:'flex', alignItems:'center', gap:8}}>
                   <input id="en" type="checkbox" checked={!!c.enabled} onChange={e=>setC({...c, enabled: e.currentTarget.checked})}/>
