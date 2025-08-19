@@ -4,19 +4,27 @@ import { cookies } from 'next/headers';
 type Role = 'USER' | 'ADMIN';
 export type SafeUser = { id: number; role: Role } | null;
 
-function parseCookies(h: string | null): Record<string, string> {
-  const out: Record<string, string> = {};
+function parseCookies(h: string | null): Record<string,string> {
+  const out: Record<string,string> = {};
   if (!h) return out;
   for (const part of h.split(';')) {
     const i = part.indexOf('=');
     if (i === -1) continue;
-    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    out[part.slice(0,i).trim()] = decodeURIComponent(part.slice(i+1).trim());
   }
   return out;
 }
 
-async function userByUidCookie(c: Record<string, string>): Promise<SafeUser> {
-  const keys = ['uid', 'userId'];
+function readCookiesMap(req?: Request): Record<string,string> {
+  if (req) return parseCookies(req.headers.get('cookie'));
+  const jar = cookies().getAll();
+  const map: Record<string,string> = {};
+  for (const c of jar) map[c.name] = c.value;
+  return map;
+}
+
+async function userByUidCookie(c: Record<string,string>): Promise<SafeUser> {
+  const keys = ['uid','userId'];
   for (const k of keys) {
     const v = c[k];
     if (v && /^\d+$/.test(v)) {
@@ -31,21 +39,20 @@ async function userByUidCookie(c: Record<string, string>): Promise<SafeUser> {
 }
 
 export async function getUserFromRequest(req: Request): Promise<SafeUser> {
-  const cookiesMap = parseCookies(req.headers.get('cookie'));
-  return await userByUidCookie(cookiesMap);
+  return await userByUidCookie(readCookiesMap(req));
 }
 
-export async function getSessionUser(req: Request): Promise<SafeUser> {
-  return getUserFromRequest(req);
+export async function getSessionUser(req?: Request): Promise<SafeUser> {
+  return await userByUidCookie(readCookiesMap(req));
 }
 
-export async function requireUser(req: Request): Promise<NonNullable<SafeUser>> {
-  const u = await getUserFromRequest(req);
+export async function requireUser(req?: Request): Promise<NonNullable<SafeUser>> {
+  const u = await getSessionUser(req);
   if (!u) throw new Error('UNAUTHORIZED');
   return u;
 }
 
-export async function requireAdmin(req: Request): Promise<NonNullable<SafeUser>> {
+export async function requireAdmin(req?: Request): Promise<NonNullable<SafeUser>> {
   const u = await requireUser(req);
   if (u.role !== 'ADMIN') throw new Error('FORBIDDEN');
   return u;
@@ -54,7 +61,7 @@ export async function requireAdmin(req: Request): Promise<NonNullable<SafeUser>>
 export function setSessionUser(id: number) {
   try {
     const c = cookies();
-    c.set('uid', String(id), { httpOnly: false, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30 });
+    c.set('uid', String(id), { httpOnly: false, sameSite: 'lax', path: '/', maxAge: 60*60*24*30 });
   } catch {}
 }
 
@@ -63,6 +70,6 @@ export async function clearSessionCookie() {
     const c = cookies();
     const exp = new Date(0);
     const opts = { path: '/', expires: exp } as const;
-    ['uid','userId','sid','session','token'].forEach(k=>c.set(k,'',opts));
+    ['uid','userId','sid','session','token'].forEach(k => c.set(k,'',opts));
   } catch {}
 }
