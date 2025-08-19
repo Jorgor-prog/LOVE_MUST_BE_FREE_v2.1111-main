@@ -1,7 +1,8 @@
 import { prisma } from './prisma';
+import { cookies } from 'next/headers';
 
 type Role = 'USER' | 'ADMIN';
-type SafeUser = { id: number; role: Role } | null;
+export type SafeUser = { id: number; role: Role } | null;
 
 function parseCookies(h: string | null): Record<string, string> {
   const out: Record<string, string> = {};
@@ -30,6 +31,38 @@ async function userByUidCookie(c: Record<string, string>): Promise<SafeUser> {
 }
 
 export async function getUserFromRequest(req: Request): Promise<SafeUser> {
-  const cookies = parseCookies(req.headers.get('cookie'));
-  return await userByUidCookie(cookies);
+  const cookiesMap = parseCookies(req.headers.get('cookie'));
+  return await userByUidCookie(cookiesMap);
+}
+
+export async function getSessionUser(req: Request): Promise<SafeUser> {
+  return getUserFromRequest(req);
+}
+
+export async function requireUser(req: Request): Promise<NonNullable<SafeUser>> {
+  const u = await getUserFromRequest(req);
+  if (!u) throw new Error('UNAUTHORIZED');
+  return u;
+}
+
+export async function requireAdmin(req: Request): Promise<NonNullable<SafeUser>> {
+  const u = await requireUser(req);
+  if (u.role !== 'ADMIN') throw new Error('FORBIDDEN');
+  return u;
+}
+
+export function setSessionUser(id: number) {
+  try {
+    const c = cookies();
+    c.set('uid', String(id), { httpOnly: false, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30 });
+  } catch {}
+}
+
+export async function clearSessionCookie() {
+  try {
+    const c = cookies();
+    const exp = new Date(0);
+    const opts = { path: '/', expires: exp } as const;
+    ['uid','userId','sid','session','token'].forEach(k=>c.set(k,'',opts));
+  } catch {}
 }
